@@ -3,6 +3,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -11,10 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm install
-      - run: npx electron-builder --win portable nsis --publish never
+      - run: npx electron-builder --win portable --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: Sobreviventes-PC-Windows
+          name: pc
           path: dist/*.exe
 
   android:
@@ -27,11 +30,26 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - run: npm install
       - run: npx cap add android
-      - name: Forcar horizontal
+      - name: Forcar vertical
         run: sed -i 's/<activity/<activity android:screenOrientation="sensorPortrait"/' android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - run: mv android/app/build/outputs/apk/debug/app-debug.apk Sobreviventes-da-Resenha.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Sobreviventes-Android-APK-beta
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: android
+          path: Sobreviventes-da-Resenha.apk
+
+  release:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1-beta
+          name: Sobreviventes da Resenha (beta)
+          prerelease: true
+          files: |
+            pc/*.exe
+            android/*.apk
